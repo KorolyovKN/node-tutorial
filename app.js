@@ -3,6 +3,7 @@ var http = require('http');
 var path = require('path');
 var config = require('config');
 var log = require('libs/log')(module);
+var HttpError = require('error').HttpError;
 
 
 var app = express(); //create application
@@ -21,37 +22,28 @@ app.use(express.bodyParser());
 
 app.use(express.cookieParser('your secret here'));
 
+app.use(require('./middleware/sendHttpError'));
+
 app.use(app.router);
 
-app.get('/', function (req, res, next) {
-  res.render('index', {});
-});
-
-var User = require('./models/user').User;
-app.get('/users', function (req, res, next) {
-  User.find({}, function (err, users) {
-    if (err) return next(err);
-    res.json(users);
-  })
-});
-
-app.get('/user/:id', function (req, res, next) {
-  User.findById(req.params.id, function (err, user) {
-    if (err) return next(err);
-    if (!user) {
-      next(new HttpError(404, "User not found"));
-    }
-    res.json(user);
-  })
-});
+require('./routes')(app);
 
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(function(err, req, res, next) {
-  if (app.get('env') == 'development') {
-    var errorHandler = express.errorHandler();
-    errorHandler(err, req, res, next);
+  if (typeof err == 'number') {
+    err = new HttpError(err);
+  }
+
+  if (err instanceof HttpError) {
+    res.sendHttpError(err);
   } else {
-    res.send(500);
+    if (app.get('env') == 'development') {
+      express.errorHendler()(err, req, res, next);
+    } else {
+      log.error(err);
+      err = new HttpError(500);
+      res.sendHttpError(err);
+    }
   }
 });
 
