@@ -9,5 +9,14 @@
         }
       }
     }
+  },
+  "session": {
+    "secret": "killer is John",
+    "key": "sid",
+    "cookie": {
+      "path": "/",
+      "httpOnly": true,
+      "maxAge": null
+    }
   }
 }
